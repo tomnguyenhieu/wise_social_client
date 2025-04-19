@@ -75,7 +75,11 @@
 						<div class="job-status-bar">
 							<ul class="like-com">
 								<li>
-									<a class="color-b2b2b2 cusror-poiter hover-color"><i class="fa fa-heart"></i> いいね
+									<a v-if="post.is_like == 0" v-on:click="like(post.id, 'like')"
+										class="color-b2b2b2 cusror-poiter hover-color"><i class="fa fa-heart"></i> いいね
+										({{ post.total_like }})</a>
+									<a v-else v-on:click="like(post.id, 'unlike')"
+										class="text-danger cusror-poiter hover-color"><i class="fa fa-heart"></i> いいね
 										({{ post.total_like }})</a>
 								</li>
 								<li>
@@ -193,7 +197,7 @@ export default {
 			offset: 0,
 			limit: 6,
 			timelinePost: [],
-			showReadMore: []
+			showReadMore: [],
 		}
 	},
 	created() {
@@ -409,6 +413,39 @@ export default {
 				console.log(err);
 			}
 		},
+		async like(postId, action) {
+			try {
+				const callAPI = await axios.get('http://wise_social_api.test/api/like', {
+					/************ Attach param for request here ***************/
+					headers: {
+						"Content-type": "application/json",
+						"Authorization": "Bearer " + this.token
+					},
+					params: {
+						post_id: postId,
+						action: action
+					}
+				});
+				if (callAPI.data.code === 200) {
+					const index = this.timelinePost.findIndex(post => post.id === postId);
+					if (index !== -1) {
+						this.timelinePost[index].favorites = [];
+						if (this.timelinePost[index].id == postId && action == 'like') {
+							this.timelinePost[index].is_like = 1;
+							this.timelinePost[index].total_like++;
+						}
+						if (this.timelinePost[index].id == postId && action == 'unlike') {
+							this.timelinePost[index].is_like = 0;
+							this.timelinePost[index].total_like--;
+						}
+					}
+				} else {
+					alert("Call API failed. Please check again!");
+				}
+			} catch (err) {
+				console.log(err);
+			}
+		}
 	},
 }
 </script>
