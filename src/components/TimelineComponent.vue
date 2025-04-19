@@ -83,7 +83,8 @@
 										({{ post.total_like }})</a>
 								</li>
 								<li>
-									<a class="color-b2b2b2 cusror-poiter hover-color"><i class="fa fa-comment-alt"></i>
+									<a v-on:click="showComment(post.id)"
+										class="color-b2b2b2 cusror-poiter hover-color"><i class="fa fa-comment-alt"></i>
 										コメント ({{ post.total_comment }})</a>
 								</li>
 							</ul>
@@ -91,55 +92,46 @@
 						</div>
 					</div>
 					<!--post-bar end-->
-					<div class="comment-section">
+					<div v-if="post.id == selectedShowComment" class="comment-section">
 						<div class="comment-sec">
-							<ul>
+							<ul v-for="post_comment in comments">
 								<li>
 									<div class="comment-list">
 										<div class="bg-img">
-											<img class="ava-cmt" src="../assets/images/resources/us-pc2.png" alt="">
+											<img v-if="post_comment._avatar != null" class="ava-cmt"
+												:src="post_comment._avatar" alt="">
+											<img v-else class="ava-cmt" src="../assets/images/resources/us-pc2.png"
+												alt="">
 										</div>
 										<div class="comment">
-											<h3>Minh Chính Phạm</h3>
+											<h3>{{ post_comment.name }}</h3>
 											<span><img src="../assets/images/clock.png" alt=""> 05月06日</span>
-											<p>中際提けトイつ売</p>
-											<a href="#" title="" class="active"><i class="fa fa-reply-all"></i>返信</a>
+											<p>{{ post_comment.comment }}</p>
+											<a href="#" title="" class="active"><i class="fa fa-reply-all"></i>Reply</a>
 										</div>
 									</div>
 									<!--comment-list end-->
 									<!-- Reply begin -->
-									<ul>
+									<ul v-for="post_child_comment in post_comment.child">
 										<li>
 											<div class="comment-list">
 												<div class="bg-img">
-													<img src="../assets/images/resources/bg-img2.png" alt="">
+													<img width="36px" v-if="post_child_comment.author._avatar != null"
+														:src="post_child_comment.author._avatar" alt="">
+													<img width="36px" v-else
+														src="../assets/images/resources/bg-img2.png" alt="">
 												</div>
 												<div class="comment">
-													<h3>Phúc Nguyễn Xuân</h3>
+													<h3>{{ post_child_comment.author.name }}</h3>
 													<span><img src="../assets/images/clock.png" alt=""> 05月06日</span>
-													<p>中際提けトイつ売主ケキ膀認ねず務法債ぞろ惜禁け割門9要 </p>
-													<a href="#" title=""><i class="fa fa-reply-all"></i>返信</a>
+													<p>{{ post_child_comment.comment }}</p>
+													<a href="#" title=""><i class="fa fa-reply-all"></i>Reply</a>
 												</div>
 											</div>
 											<!--comment-list end-->
 										</li>
 									</ul>
 									<!-- End reply -->
-								</li>
-								<li>
-									<div class="comment-list">
-										<div class="bg-img">
-											<img src="../assets/images/resources/bg-img3.png" alt="">
-										</div>
-										<div class="comment">
-											<h3>Trần Dần</h3>
-											<span><img src="../assets/images/clock.png" alt=""> 05月06日</span>
-											<p>中際提けトイつ売</p>
-											<p>ず務法債中際提けトイつ売ぞろ惜禁け割門9要ワ <i class="fa fa-heart"></i> </p>
-											<a href="#" title=""><i class="fa fa-reply-all"></i>返信</a>
-										</div>
-									</div>
-									<!--comment-list end-->
 								</li>
 							</ul>
 						</div>
@@ -198,6 +190,10 @@ export default {
 			limit: 6,
 			timelinePost: [],
 			showReadMore: [],
+			selectedShowComment: null,
+			commentOffset: 0,
+			commentLimit: 6,
+			comments: []
 		}
 	},
 	created() {
@@ -413,6 +409,8 @@ export default {
 				console.log(err);
 			}
 		},
+
+		// Like method
 		async like(postId, action) {
 			try {
 				const callAPI = await axios.get('http://wise_social_api.test/api/like', {
@@ -426,9 +424,9 @@ export default {
 						action: action
 					}
 				});
-				if (callAPI.data.code === 200) {
+				if (callAPI.data.code == 200) {
 					const index = this.timelinePost.findIndex(post => post.id === postId);
-					if (index !== -1) {
+					if (index != -1) {
 						this.timelinePost[index].favorites = [];
 						if (this.timelinePost[index].id == postId && action == 'like') {
 							this.timelinePost[index].is_like = 1;
@@ -445,6 +443,35 @@ export default {
 			} catch (err) {
 				console.log(err);
 			}
+		},
+
+		// Show comment
+		async showComment(postId) {
+			this.selectedShowComment = postId;
+			console.log(this.selectedShowComment);
+
+			try {
+				const callAPI = await axios.get('http://wise_social_api.test/api/list-comment', {
+					/************ Attach param for request here ***************/
+					headers: {
+						"Content-type": "application/json",
+						"Authorization": "Bearer " + this.token
+					},
+					params: {
+						post_id: postId,
+						offset: this.commentOffset,
+						limit: this.commentLimit
+					}
+				});
+				if (callAPI.data.code == 200) {
+					console.log(callAPI.data.data);
+					this.comments = callAPI.data.data;
+				} else {
+					console.log('Call API failed');
+				}
+			} catch (error) {
+				console.log(error);
+			}
 		}
 	},
 }
@@ -456,5 +483,9 @@ export default {
 */
 .txt-readmore:hover {
 	cursor: pointer;
+}
+
+.posty {
+	margin-bottom: 24px;
 }
 </style>
