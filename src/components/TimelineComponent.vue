@@ -94,8 +94,8 @@
 					<!--post-bar end-->
 					<div v-if="post.id == selectedShowComment" class="comment-section">
 						<div class="comment-sec">
-							<ul v-for="post_comment in comments">
-								<li>
+							<ul>
+								<li v-for="post_comment in comments" v-bind:key="post_comment.id">
 									<div class="comment-list">
 										<div class="bg-img">
 											<img v-if="post_comment._avatar != null" class="ava-cmt"
@@ -105,9 +105,11 @@
 										</div>
 										<div class="comment">
 											<h3>{{ post_comment.name }}</h3>
-											<span><img src="../assets/images/clock.png" alt=""> 05月06日</span>
+											<span><img src="../assets/images/clock.png" alt=""> {{
+												post_comment._created_at }}</span>
 											<p>{{ post_comment.comment }}</p>
-											<a href="#" title="" class="active"><i class="fa fa-reply-all"></i>Reply</a>
+											<a v-on:click="clickReply(post_comment.id, post_comment.name)" href="#"
+												title="" class="active"><i class="fa fa-reply-all"></i>Reply</a>
 										</div>
 									</div>
 									<!--comment-list end-->
@@ -123,9 +125,9 @@
 												</div>
 												<div class="comment">
 													<h3>{{ post_child_comment.author.name }}</h3>
-													<span><img src="../assets/images/clock.png" alt=""> 05月06日</span>
+													<span><img src="../assets/images/clock.png" alt="">{{
+														post_child_comment._created_at }}</span>
 													<p>{{ post_child_comment.comment }}</p>
-													<a href="#" title=""><i class="fa fa-reply-all"></i>Reply</a>
 												</div>
 											</div>
 											<!--comment-list end-->
@@ -139,7 +141,11 @@
 						<div class="post-comment">
 							<div class="comment_box">
 								<form>
-									<input type="text" placeholder="コメント #タグ を入力" v-model="comment">
+									<label v-if="replyingTo != null" class="text-danger"
+										style="display: block; padding: 8px 0;" for="comment_form">Reply to: {{
+											replyingTo }}</label>
+									<input type="text" placeholder="コメント #タグ を入力" v-model="comment" id="comment_for"
+										class="">
 									<button v-on:click.prevent="sendComment()" type="button"><i
 											class="fa fa-paper-plane"></i></button>
 								</form>
@@ -196,7 +202,8 @@
 				commentLimit: 6,
 				comments: [],
 				comment: "",
-				parent: 0
+				parent: 0,
+				replyingTo: null
 			}
 		},
 		created() {
@@ -451,6 +458,8 @@
 			// Show comment
 			async showComment(postId) {
 				this.selectedShowComment = postId;
+				this.parent = null;
+				this.replyingTo = null;
 				console.log(this.selectedShowComment);
 
 				try {
@@ -483,7 +492,7 @@
 				formData.append('post_id', this.selectedShowComment);
 				formData.append('comment', this.comment);
 				formData.append('parent', this.parent);
-				const callAPI = await axios.post('http://wise_social_api.test/api/comment',
+				await axios.post('http://wise_social_api.test/api/comment',
 					formData, {
 					/************ Attach param for request here ***************/
 					headers: {
@@ -492,6 +501,12 @@
 					}
 				});
 				this.comment = "";
+			},
+
+			// Click reply
+			clickReply(parentId, replyingToName) {
+				this.parent = parentId;
+				this.replyingTo = replyingToName;
 			}
 		},
 	}
