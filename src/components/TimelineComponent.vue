@@ -114,8 +114,9 @@
 									</div>
 									<!--comment-list end-->
 									<!-- Reply begin -->
-									<ul v-for="post_child_comment in post_comment.child">
-										<li>
+									<ul>
+										<li v-for="post_child_comment in post_comment.child"
+											v-bind:key="post_child_comment.id">
 											<div class="comment-list">
 												<div class="bg-img">
 													<img width="36px" v-if="post_child_comment.author._avatar != null"
@@ -145,7 +146,7 @@
 										style="display: block; padding: 8px 0;" for="comment_form">Reply to: {{
 											replyingTo }}</label>
 									<input type="text" placeholder="コメント #タグ を入力" v-model="comment" id="comment_for"
-										class="">
+										style="width: 90%;">
 									<button v-on:click.prevent="sendComment()" type="button"><i
 											class="fa fa-paper-plane"></i></button>
 								</form>
@@ -186,15 +187,37 @@
 		*/
 		sockets: {
 			// Send data to server
-			ClientSendCommentToServer: function (responseComment) {
+			ClientSendMessageToServer: function (responseComment) {
 				this.comment = responseComment;
 			},
 			// Listen event from server and render data
-			ServerSendCommentToClient: function (responseComment) {
+			ServerSendMessageToClient: function (responseComment) {
 				// Push to the comment list
-				if (responseComment.type === 'comment' && this.transaction.id == responseComment.transaction_id) {
-					this.pushCommentToList(responseComment);
+				if (responseComment.type === 'comment') {
+					// Handle commenting
+					let _parent_id = parseInt(responseComment.parent_id);
+					if (_parent_id === 0) {
+						this.comments.unshift(responseComment);
+					} else {
+						for (let i = 0; i < this.comments.length; i++) {
+							if (this.comments[i].id == _parent_id) {
+								if (Array.isArray(this.comments[i].child)) {
+									this.comments[i].child.push(responseComment);
+								} else {
+									this.comments[i] = {
+										...this.comments[i],
+										child: [responseComment]
+									};
+								}
+								break;
+							}
+						}
+					}
 					this.$forceUpdate();
+				} else if (responseComment.type === 'message') {
+					// Handle messaging
+				} else {
+					console.log('Socket error');
 				}
 			},
 		},
@@ -380,7 +403,6 @@
 						}
 					});
 					if (callAPI.data.code == 200) {
-						console.log(callAPI.data.code);
 						this.timelinePost = callAPI.data.data;
 					} else {
 						alert("Call api failed, please check again!");
@@ -478,10 +500,14 @@
 			// Show comment
 			async showComment(postId) {
 				this.selectedShowComment = postId;
-				this.parent = null;
+				this.parent = 0;
 				this.replyingTo = null;
-				console.log(this.selectedShowComment);
-
+				this.$socket.emit('ClientSendMessageToServer', {
+					id: postId,
+					post_id: postId,
+					type: "comment",
+					action: "join"
+				});
 				try {
 					const callAPI = await axios.get('http://wise_social_api.test/api/list-comment', {
 						/************ Attach param for request here ***************/
@@ -496,7 +522,6 @@
 						}
 					});
 					if (callAPI.data.code == 200) {
-						console.log(callAPI.data.data);
 						this.comments = callAPI.data.data;
 					} else {
 						console.log('Call API failed');
@@ -511,8 +536,8 @@
 				let formData = new FormData();
 				formData.append('post_id', this.selectedShowComment);
 				formData.append('comment', this.comment);
-				formData.append('parent', this.parent);
-				await axios.post('http://wise_social_api.test/api/comment',
+				formData.append('parent_id', this.parent);
+				const callAPI = await axios.post('http://wise_social_api.test/api/comment',
 					formData, {
 					/************ Attach param for request here ***************/
 					headers: {
@@ -520,6 +545,7 @@
 						"Authorization": "Bearer " + this.token
 					}
 				});
+				this.$socket.emit('ClientSendMessageToServer', callAPI.data.data);
 				this.comment = "";
 			},
 
