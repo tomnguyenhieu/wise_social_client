@@ -76,6 +76,20 @@
 	import axios from 'axios';
 
 	export default {
+		sockets: {
+			ClientSendMessageToServer: function (responseMessage) {
+				this.messageContent = responseMessage;
+			},
+			ServerSendMessageToClient: function (responseMessage) {
+				if (responseMessage.type === 'message') {
+					if (responseMessage.user_id == this.selectedFriend.id) {
+						responseMessage.my_message = "friend";
+					}
+					this.listMessage.push(responseMessage);
+					this.$forceUpdate();
+				}
+			},
+		},
 		data() {
 			return {
 				token: sessionStorage.getItem("token"),
@@ -137,6 +151,25 @@
 					if (callAPI.data.code == 200) {
 						this.listMessage = callAPI.data.data.messages;
 						this.roomId = callAPI.data.data.room_id;
+						let dataMsgSentToSocket = {
+							"id": 0,
+							"name": "",
+							"avatar": "",
+							"message": "",
+							"user_id": "",
+							"friend_id": "",
+							"is_view": 0,
+							"created_at": "",
+							"my_message": "me",
+							"_created_at": "",
+							"room_id": this.roomId,
+							"type": "message",
+							"action": "join"
+						}
+						this.$socket.emit(
+							'ClientSendMessageToServer',
+							dataMsgSentToSocket
+						);
 					} else {
 						alert("Call api failed, please check again!");
 					}
@@ -159,9 +192,11 @@
 						}
 					});
 					if (callAPI.data.code == 200) {
-						this.listMessage.push(callAPI.data.data);
 						this.messageContent = "";
-						this.$forceUpdate();
+						this.$socket.emit(
+							'ClientSendMessageToServer',
+							callAPI.data.data
+						);
 					} else {
 						alert("Call api failed, please check again!");
 					}
